@@ -1,0 +1,42 @@
+[
+  {
+    "query": "Summarize the main argument of the first paper.",
+    "expectedThemes": ["central thesis", "high-level summary", "source citations"]
+  },
+  {
+    "query": "What are the key architectural components described?",
+    "expectedThemes": ["architecture", "components", "technical detail"]
+  },
+  {
+    "query": "List the most important limitations discussed.",
+    "expectedThemes": ["limitations", "trade-offs", "caveats"]
+  },
+  {
+    "query": "What evaluation metrics are used and why?",
+    "expectedThemes": ["metrics", "evaluation setup", "reasoning"]
+  },
+  {
+    "query": "Compare this approach with prior methods in the document.",
+    "expectedThemes": ["comparison", "prior work", "differences"]
+  },
+  {
+    "query": "Extract 5 actionable implementation takeaways.",
+    "expectedThemes": ["actionable steps", "implementation guidance", "practical notes"]
+  },
+  {
+    "query": "What assumptions does the method make?",
+    "expectedThemes": ["assumptions", "constraints", "context"]
+  },
+  {
+    "query": "Give me a short executive brief for non-technical readers.",
+    "expectedThemes": ["plain language", "high-level impact", "concise summary"]
+  },
+  {
+    "query": "What open research questions are highlighted?",
+    "expectedThemes": ["future work", "open problems", "research directions"]
+  },
+  {
+    "query": "What does the document say about quantum cryptography in production?",
+    "expectedThemes": ["out-of-scope handling", "honest uncertainty", "I don't know behavior"]
+  }
+]
