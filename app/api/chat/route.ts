@@ -7,6 +7,18 @@ import { captureException } from "@/lib/sentry";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 
+function normalizeRequestedDocumentIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string") continue;
+    const id = item.trim();
+    if (!id) continue;
+    out.push(id);
+  }
+  return Array.from(new Set(out));
+}
+
 const nvidia = createOpenAI({
   apiKey: process.env.NVIDIA_API_KEY,
   baseURL: process.env.NVIDIA_API_BASE_URL ?? "https://integrate.api.nvidia.com/v1",
@@ -34,9 +46,28 @@ export async function POST(request: Request) {
       return Response.json({ error: "No user message found." }, { status: 400 });
     }
 
+    const requestedIds = normalizeRequestedDocumentIds(body.documentIds);
+    const { data: readyDocs } = await supabase
+      .from("documents")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("status", "ready");
+
+    const readyIds = (readyDocs ?? []).map((doc) => doc.id);
+    const readyIdSet = new Set(readyIds);
+    const requestedReadyIds = requestedIds.filter((id) => readyIdSet.has(id));
+
+    // Empty request => all ready docs.
+    // If user-selected ids cover all ready docs (common "All documents" UI path),
+    // skip filtering so retrieval can't accidentally get scoped to stale/non-ready ids.
+    const normalizedDocumentIds =
+      requestedReadyIds.length > 0 && requestedReadyIds.length < readyIds.length
+        ? requestedReadyIds
+        : undefined;
+
     const chunks = await retrieveChunks(latestUserMessage.content, {
       userId: user.id,
-      documentIds: body.documentIds,
+      documentIds: normalizedDocumentIds,
       topK: 5,
       threshold: 0.65,
     });

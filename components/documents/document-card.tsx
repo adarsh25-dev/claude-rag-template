@@ -31,6 +31,10 @@ const statusStyles: Record<Document["status"], string> = {
     "text-[hsl(var(--color-danger))] bg-[hsl(var(--color-danger)/0.14)] shadow-[0_0_16px_hsl(var(--color-danger)/0.2)]",
 };
 
+function statusBadgeClass(status: Document["status"]): string {
+  return statusStyles[status] ?? statusStyles.failed;
+}
+
 function FileIcon({ type }: { type: string }) {
   if (type.includes("pdf")) return <FileText className="size-5 text-[hsl(var(--color-warning))]" />;
   if (type.includes("word")) return <FileType2 className="size-5 text-[hsl(var(--color-accent))]" />;
@@ -45,7 +49,8 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
   const statusText = useMemo(() => {
     if (document.status === "processing") return "Indexing…";
     if (document.status === "ready") return "Ready";
-    return "Failed";
+    if (document.status === "failed") return "Not indexed";
+    return "Unknown status";
   }, [document.status]);
 
   return (
@@ -84,10 +89,15 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
               <p className="mt-1 line-clamp-1 font-mono text-xs text-[hsl(var(--color-text-tertiary))]">{document.filename}</p>
             </div>
 
-            <div className="mt-4">
-              <span className={cn("inline-flex items-center rounded-full px-3 py-1 text-xs", statusStyles[document.status])}>
+            <div className="mt-4 space-y-1">
+              <span className={cn("inline-flex items-center rounded-full px-3 py-1 text-xs", statusBadgeClass(document.status))}>
                 {statusText}
               </span>
+              {document.status === "failed" && document.error_message ? (
+                <p className="line-clamp-2 text-xs text-[hsl(var(--color-text-tertiary))]" title={document.error_message}>
+                  {document.error_message}
+                </p>
+              ) : null}
             </div>
 
             <div className="mt-5 flex items-center justify-between text-xs text-[hsl(var(--color-text-secondary))]">

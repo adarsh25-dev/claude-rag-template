@@ -1,6 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
+/** Server-to-server calls (e.g. manual POST /api/documents/:id/process) authenticate via this header. */
+function isTrustedInternalApiRequest(request: NextRequest): boolean {
+  const header = request.headers.get("x-internal-key")?.trim();
+  const expected = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  return Boolean(header && expected && header === expected);
+}
+
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true;
   if (pathname === "/login" || pathname === "/signup") return true;
@@ -17,7 +24,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api")) {
-    if (!user) {
+    if (!user && !isTrustedInternalApiRequest(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return response;

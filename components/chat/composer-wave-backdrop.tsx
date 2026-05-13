@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 type ComposerWaveBackdropProps = {
   active: boolean;
   reduceMotion: boolean;
+  /** Normalized pointer (0–1) in the chat surface; optional for mouse-follow VFX. */
+  mouseNormRef?: RefObject<{ nx: number; ny: number } | null>;
 };
 
 const TAU = Math.PI * 2;
@@ -211,13 +213,18 @@ function fillAuroraRibbon(
 }
 
 export function ComposerWaveBackdrop({
+  active,
   reduceMotion,
+  mouseNormRef,
 }: ComposerWaveBackdropProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef(0);
   const phaseRef = useRef(0);
   const lastRef = useRef(0);
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const smoothMouseRef = useRef({ nx: 0.5, ny: 0.64 });
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -274,6 +281,13 @@ export function ComposerWaveBackdrop({
       const tp = textPrimary();
 
       ctx.clearRect(0, 0, w, h);
+
+      const target = mouseNormRef?.current ?? { nx: 0.5, ny: 0.62 };
+      const follow = 2.75 + (activeRef.current ? 1.45 : 0);
+      smoothMouseRef.current.nx +=
+        (target.nx - smoothMouseRef.current.nx) * Math.min(1, dt * follow);
+      smoothMouseRef.current.ny +=
+        (target.ny - smoothMouseRef.current.ny) * Math.min(1, dt * follow);
 
       const p = 1;
       const ribbonAmp = h * AURORA_WAVE_AMP_H * p;
@@ -353,12 +367,18 @@ export function ComposerWaveBackdrop({
       ctx.save();
       ctx.globalCompositeOperation = "screen";
       ctx.globalAlpha = 0.055;
+      const blobBlend = 0.14 + (activeRef.current ? 0.075 : 0);
+      const baseBlobCx = w * (0.5 + 0.25 * Math.sin(t * 0.22));
+      const baseBlobCy = h * (0.64 + 0.06 * Math.sin(t * 0.27));
+      const { nx: mnx, ny: mny } = smoothMouseRef.current;
+      const blobCx = baseBlobCx + (mnx * w - baseBlobCx) * blobBlend;
+      const blobCy = baseBlobCy + (mny * h - baseBlobCy) * blobBlend;
       fillBlob(
         ctx,
         w,
         h,
-        w * (0.5 + 0.25 * Math.sin(t * 0.22)),
-        h * (0.64 + 0.06 * Math.sin(t * 0.27)),
+        blobCx,
+        blobCy,
         h * 1.1 * p,
         sg,
         0.35,
@@ -469,7 +489,7 @@ export function ComposerWaveBackdrop({
   if (reduceMotion) {
     return (
       <div
-        className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(180deg,hsl(var(--color-bg)/0)_0%,hsl(var(--color-bg)/0)_8%,hsl(var(--color-bg)/0.35)_18%,hsl(var(--color-success)/0.1)_32%,hsl(var(--color-accent)/0.09)_44%,hsl(var(--color-text-primary)/0.07)_54%,hsl(var(--color-accent-2)/0.12)_66%,hsl(var(--color-bg))_100%)]"
+        className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(180deg,hsl(var(--color-bg,0_0%_4%)_/_0)_0%,hsl(var(--color-bg,0_0%_4%)_/_0)_8%,hsl(var(--color-bg,0_0%_4%)_/_0.35)_18%,hsl(var(--color-success,158_22%_46%)_/_0.1)_32%,hsl(var(--color-accent,206_48%_58%)_/_0.09)_44%,hsl(var(--color-text-primary,210_28%_90%)_/_0.07)_54%,hsl(var(--color-accent-2,218_32%_38%)_/_0.12)_66%,hsl(var(--color-bg,0_0%_4%)_/_1)_100%)]"
         aria-hidden
       />
     );

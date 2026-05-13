@@ -30,8 +30,8 @@ function getEmbeddingDimensions(): number {
   return n;
 }
 
-/** NeMo Retriever E5 QA: same model id + `input_type` query vs passage (hosted integrate rejects `-query` model names). */
-function usesNvEmbedqaE5InputType(baseModelId: string): boolean {
+/** NeMo Retriever E5 QA model family detection. */
+function isNvEmbedqaE5Model(baseModelId: string): boolean {
   return baseModelId.toLowerCase().includes("nv-embedqa-e5");
 }
 
@@ -39,22 +39,26 @@ function baseEmbeddingModelId(configured: string): string {
   return configured.replace(/-(query|passage)$/i, "");
 }
 
-function buildEmbeddingsRequestBody(
+function buildEmbeddingsRequestBodies(
   configuredModel: string,
   input: string | string[],
   mode: "query" | "passage"
-): Record<string, unknown> {
+): Record<string, unknown>[] {
   const base = baseEmbeddingModelId(configuredModel);
-  const body: Record<string, unknown> = { model: base, input };
+  const modeSuffix = mode === "query" ? "query" : "passage";
 
-  if (usesNvEmbedqaE5InputType(base)) {
-    body.input_type = mode;
-    body.modality = "text";
-    return body;
+  if (isNvEmbedqaE5Model(base)) {
+    // NVIDIA endpoints vary by account/catalog. Try the NeMo-style input_type form first,
+    // then retry with suffix-based model ids for hosts that only expose those aliases.
+    return [
+      { input, model: base, input_type: mode },
+      { input, model: `${base}-${modeSuffix}`, modality: "text" },
+      { input, model: base, modality: "text" },
+      { input, model: base },
+    ];
   }
 
-  body.dimensions = getEmbeddingDimensions();
-  return body;
+  return [{ input, model: base, dimensions: getEmbeddingDimensions() }];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -102,42 +106,76 @@ async function callNvidiaEmbeddings(
 ): Promise<EmbeddingsDataItem[]> {
   const url = `${getNvidiaBaseUrl()}/embeddings`;
   const configuredModel = getConfiguredEmbeddingModel();
-  const body = buildEmbeddingsRequestBody(configuredModel, input, mode);
+  const requestBodies = buildEmbeddingsRequestBodies(configuredModel, input, mode);
+  const attemptErrors: string[] = [];
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${getNvidiaApiKey()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  for (let i = 0; i < requestBodies.length; i += 1) {
+    const body = requestBodies[i];
+    const modelSent = typeof body.model === "string" ? body.model : configuredModel;
 
-  const raw = await res.text();
-  let json: unknown;
-  try {
-    json = raw ? JSON.parse(raw) : {};
-  } catch {
-    let modelSent = typeof body.model === "string" ? body.model : configuredModel;
-    if (typeof body.input_type === "string") {
-      modelSent += `, input_type=${body.input_type}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${getNvidiaApiKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const raw = await res.text();
+    let json: unknown;
+    let isJson = true;
+    try {
+      json = raw ? JSON.parse(raw) : {};
+    } catch {
+      isJson = false;
+      json = undefined;
     }
-    const hint404 =
-      res.status === 404
-        ? ` The integrate host often returns HTML here if the model is not on POST /v1/embeddings (e.g. chat-only), or the id is wrong. Default catalog embedding: ${DEFAULT_EMBEDDING_MODEL} (see NeMo Retriever docs). Requested model: ${modelSent}.`
-        : "";
-    throw new Error(`Embeddings request failed: response was not JSON (HTTP ${res.status}).${hint404}`);
-  }
 
-  if (!res.ok) {
+    if (res.ok) {
+      if (!isJson) {
+        throw new Error(`Embeddings request succeeded but response was not JSON (model ${modelSent})`);
+      }
+      return parseEmbeddingsData(json);
+    }
+
     let message = `Embeddings request failed with status ${res.status}`;
-    if (isRecord(json) && isRecord(json.error) && typeof json.error.message === "string") {
+    if (isJson && isRecord(json) && isRecord(json.error) && typeof json.error.message === "string") {
       message = json.error.message;
+    } else if (isJson && isRecord(json) && typeof json.message === "string") {
+      message = json.message;
+    } else if (isJson && isRecord(json) && typeof json.detail === "string") {
+      message = json.detail;
+    } else if (raw.length > 0 && raw.length < 800) {
+      message = `${message}: ${raw}`;
     }
-    throw new Error(message);
+
+    const retryableModelMismatch =
+      res.status === 404 ||
+      res.status === 400 ||
+      (!isJson && res.status >= 400) ||
+      /input_type|model|not found|unsupported/i.test(message);
+
+    const hasNext = i < requestBodies.length - 1;
+    if (retryableModelMismatch && hasNext) {
+      attemptErrors.push(`model=${modelSent} status=${res.status} message=${message}`);
+      continue;
+    }
+
+    if (!isJson) {
+      const hint404 =
+        res.status === 404
+          ? ` The integrate host often returns HTML here if the model is not on POST /v1/embeddings (e.g. chat-only), or the id is wrong. Default catalog embedding: ${DEFAULT_EMBEDDING_MODEL} (see NeMo Retriever docs). Requested model: ${modelSent}.`
+          : "";
+      const prior = attemptErrors.length > 0 ? ` Prior attempts: ${attemptErrors.join(" | ")}` : "";
+      throw new Error(`Embeddings request failed: response was not JSON (HTTP ${res.status}).${hint404}${prior}`);
+    }
+
+    const prior = attemptErrors.length > 0 ? ` Prior attempts: ${attemptErrors.join(" | ")}` : "";
+    throw new Error(`${message} (model: ${modelSent}).${prior}`);
   }
 
-  return parseEmbeddingsData(json);
+  throw new Error("Embeddings request failed after exhausting model compatibility fallbacks");
 }
 
 export async function getEmbedding(text: string): Promise<number[]> {
@@ -149,7 +187,24 @@ export async function getEmbedding(text: string): Promise<number[]> {
   return first.embedding;
 }
 
+/** NVIDIA integrate is stricter than OpenAI on batch size; keep small to avoid 400s. */
+const EMBEDDING_UPSTREAM_BATCH_SIZE = 32;
+
+function sanitizeEmbeddingInputs(texts: string[]): string[] {
+  return texts.map((t) => {
+    const s = t.replace(/\u0000/g, " ").replace(/\s+/g, " ").trim();
+    return s.length > 0 ? s : " ";
+  });
+}
+
 export async function getEmbeddings(texts: string[]): Promise<number[][]> {
-  const items = await callNvidiaEmbeddings(texts, "passage");
-  return items.map((d) => d.embedding);
+  if (texts.length === 0) return [];
+  const sanitized = sanitizeEmbeddingInputs(texts);
+  const out: number[][] = [];
+  for (let i = 0; i < sanitized.length; i += EMBEDDING_UPSTREAM_BATCH_SIZE) {
+    const slice = sanitized.slice(i, i + EMBEDDING_UPSTREAM_BATCH_SIZE);
+    const items = await callNvidiaEmbeddings(slice, "passage");
+    out.push(...items.map((d) => d.embedding));
+  }
+  return out;
 }

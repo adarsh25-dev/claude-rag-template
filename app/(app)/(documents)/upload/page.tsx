@@ -56,27 +56,31 @@ export default function UploadPage() {
         });
 
         if (!response.ok) {
-          const body = (await response.json().catch(() => null)) as { error?: string } | null;
+          const body = (await response.json().catch(() => null)) as {
+            error?: string;
+            details?: string;
+          } | null;
           if (response.status === 401) {
             throw new Error("Your session expired. Sign in again from the home page.");
           }
-          throw new Error(body?.error ?? "Upload failed");
+          const detail = body?.details ? `${body.error ?? "Request failed"} — ${body.details}` : body?.error;
+          throw new Error(detail ?? "Upload failed");
         }
 
         setStatus({
           progress: Math.max(uploadProgress, 50),
-          message: `Generating embeddings (${index + 1}/${files.length})…`,
+          message: `Indexing ${file.name} (${index + 1}/${files.length})…`,
           uploading: true,
         });
       }
 
-      setStatus({ progress: 100, message: "All files queued for indexing", uploading: false });
+      setStatus({ progress: 100, message: "All files indexed and ready to search", uploading: false });
       confetti({
         particleCount: 24,
         spread: 70,
         colors: ["#6fa8d6", "#dfe9f4", "#8a9eb8"],
       });
-      toast.success("Documents uploaded and processing started.");
+      toast.success("Documents uploaded and ready to search.");
       router.push("/library");
     } catch (error) {
       setStatus({

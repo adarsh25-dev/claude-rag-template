@@ -4,12 +4,36 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getFileExtension, getMimeTypeFromExtension } from "@/lib/parsing";
 import { captureException } from "@/lib/sentry";
+import { processDocumentById } from "@/lib/documents/process-document";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+/** Allow full parse + embed pipeline in one request (Vercel Pro / compatible hosts). */
+export const maxDuration = 300;
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set(["pdf", "docx", "md", "txt"]);
+
+/**
+ * Per-user document cap.
+ * - Unset: unlimited in development (`NODE_ENV !== "production"`), max 5 in production.
+ * - Set `DOCUMENTS_MAX_PER_USER` to an integer; `0` means unlimited (any environment).
+ */
+function getDocumentsPerUserCap(): { limit: number; unlimited: boolean } {
+  const raw = process.env.DOCUMENTS_MAX_PER_USER?.trim();
+  if (raw === undefined || raw === "") {
+    if (process.env.NODE_ENV === "production") {
+      return { limit: 5, unlimited: false };
+    }
+    return { limit: 0, unlimited: true };
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) return { limit: 5, unlimited: false };
+  if (parsed === 0) return { limit: 0, unlimited: true };
+  const limit = Math.min(Math.max(1, parsed), 1_000_000);
+  return { limit, unlimited: false };
+}
+
 const ALLOWED_MIME_TYPES = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -81,8 +105,15 @@ export async function POST(request: Request) {
       return jsonFromPostgrest(500, "Failed to count documents", countError);
     }
 
-    if ((docCount ?? 0) >= 5) {
-      return NextResponse.json({ error: "Free tier limit reached: max 5 documents." }, { status: 403 });
+    const cap = getDocumentsPerUserCap();
+    if (!cap.unlimited && (docCount ?? 0) >= cap.limit) {
+      return NextResponse.json(
+        {
+          error: "Document limit reached.",
+          details: `Maximum ${cap.limit} document(s) per account. Remove one from the library or set DOCUMENTS_MAX_PER_USER (integer; 0 = unlimited).`,
+        },
+        { status: 403 }
+      );
     }
 
     const admin = createAdminClient();
@@ -149,19 +180,32 @@ export async function POST(request: Request) {
       return jsonFromPostgrest(500, "Failed to create document", insertError ?? undefined);
     }
 
-    const origin = request.headers.get("origin") ?? new URL(request.url).origin;
-    const processUrl = `${origin}/api/documents/${documentId}/process`;
-    const cookieHeader = request.headers.get("cookie") ?? "";
-    void fetch(processUrl, {
-      method: "POST",
-      headers: {
-        cookie: cookieHeader,
-        "content-type": "application/json",
-        "x-internal-key": process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "",
-      },
-    }).catch(() => undefined);
+    const processResult = await processDocumentById(documentId);
 
-    return NextResponse.json({ document: doc }, { status: 202 });
+    if (!processResult.success) {
+      captureException(new Error(processResult.error), {
+        route: "POST /api/documents",
+        documentId,
+      });
+      const { data: failedDoc } = await admin
+        .from("documents")
+        .select("*")
+        .eq("id", documentId)
+        .single();
+
+      return NextResponse.json(
+        {
+          error: "Document was saved but search indexing failed.",
+          details: processResult.error,
+          document: failedDoc ?? doc,
+        },
+        { status: 502 }
+      );
+    }
+
+    const { data: readyDoc } = await admin.from("documents").select("*").eq("id", documentId).single();
+
+    return NextResponse.json({ document: readyDoc ?? doc }, { status: 200 });
   } catch (error) {
     captureException(error, { route: "POST /api/documents" });
     const message = error instanceof Error ? error.message : "Unexpected error";

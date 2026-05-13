@@ -1,9 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { motion, type HTMLMotionProps } from "framer-motion";
-import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
+import { motionTapScale } from "@/lib/motion-ui";
+import { cn } from "@/lib/utils";
+
+const MotionLink = motion(Link);
 
 type MagneticButtonProps = Omit<HTMLMotionProps<"button">, "size" | "children"> & {
   children: React.ReactNode;
@@ -22,6 +25,8 @@ export function MagneticButton({
 }: MagneticButtonProps) {
   const ref = useRef<HTMLButtonElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const reduceMotion = useReducedMotion();
+  const tap = motionTapScale(reduceMotion);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
     const target = e.currentTarget as HTMLElement;
@@ -49,7 +54,7 @@ export function MagneticButton({
   };
 
   const classes = cn(
-    "inline-flex items-center justify-center rounded-xl border font-medium whitespace-nowrap transition-all duration-300 outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--color-accent))]/50 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40",
+    "inline-flex items-center justify-center rounded-xl border font-medium whitespace-nowrap transition-all duration-300 outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--color-accent))]/50 disabled:pointer-events-none disabled:opacity-40",
     variants[variant],
     sizes[size],
     className
@@ -63,9 +68,13 @@ export function MagneticButton({
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        <Link href={href} className={classes}>
+        <MotionLink
+          href={href}
+          className={classes}
+          whileTap={tap}
+        >
           {children}
-        </Link>
+        </MotionLink>
       </motion.div>
     );
   }
@@ -79,6 +88,7 @@ export function MagneticButton({
       animate={{ x: position.x, y: position.y }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       {...props}
+      whileTap={tap}
     >
       {children}
     </motion.button>
