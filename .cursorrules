@@ -27,28 +27,33 @@ products — calm, not neon.
 
 1. THEME: Dark-only. html element always has class="dark". No theme toggle.
 
-2. COLOR TOKENS — palette (HSL CSS variables in globals.css; never hardcode hex):
+2. COLOR TOKENS — palette (authoritative values live in `app/globals.css`; never hardcode hex):
 
-   --color-bg: 0 0% 4% (charcoal black — neutral, not pure #000)
+   In `:root` / `.dark`, each token is **space-separated HSL** (and optional alpha after `/`) so components use `hsl(var(--token))`. Tailwind `@theme inline` may expose the same hues as full `hsl(...)` for utilities — keep both layers in sync when editing.
+
+   Surfaces:
+   --color-bg: 0 0% 4% (charcoal — neutral, not pure #000)
    --color-bg-elevated: 0 0% 7%
    --color-bg-overlay: 0 0% 10%
    --color-bg-hover: 0 0% 12%
 
+   Borders:
    --color-border: 210 22% 88% / 0.08
    --color-border-strong: 210 22% 88% / 0.16
 
+   Text:
    --color-text-primary: 210 28% 90% (cool off-white, never pure #fff)
    --color-text-secondary: 215 16% 62%
    --color-text-tertiary: 220 10% 42%
 
-   /_ PRIMARY accent — steel blue (single accent per component) _/
+   Primary accent — steel blue (single accent per component):
    --color-accent: 206 48% 58%
    --color-accent-glow: 206 48% 58% / 0.30
 
-   /_ SECONDARY accent — deep slate blue (annotations / secondary emphasis) _/
+   Secondary accent — deep slate blue (annotations / secondary emphasis):
    --color-accent-2: 218 32% 38%
 
-   /_ Semantic — muted, not neon _/
+   Semantic (muted, not neon):
    --color-success: 158 22% 46%
    --color-warning: 40 42% 58%
    --color-danger: 350 40% 52%

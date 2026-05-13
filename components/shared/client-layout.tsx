@@ -2,13 +2,12 @@
 
 import { useEffect } from "react";
 import { getLenis } from "@/lib/lenis";
+import { connectLenisToScrollTrigger } from "@/lib/scroll-trigger-lenis";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    getLenis();
-    return () => {
-      // Keep lenis alive across route changes
-    };
+    const lenis = getLenis();
+    return connectLenisToScrollTrigger(lenis);
   }, []);
 
   return <>{children}</>;

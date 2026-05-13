@@ -1,0 +1,6 @@
+/* Global additions imported from app/globals.css */
+
+::selection {
+  background: hsl(var(--color-accent) / 0.28);
+  color: hsl(var(--color-text-primary));
+}

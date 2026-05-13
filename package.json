@@ -13,6 +13,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^0.0.47",
     "@base-ui/react": "^1.4.1",
+    "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^5.2.2",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.17.14",
@@ -62,6 +63,7 @@
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@types/three": "^0.184.0",
+    "dotenv": "^17.4.2",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.33",
     "tailwindcss": "^4",
