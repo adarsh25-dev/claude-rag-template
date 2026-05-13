@@ -64,21 +64,44 @@ flowchart LR
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key (browser) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role (API routes, `pnpm seed`) |
+| `NEXT_PUBLIC_SITE_URL` | No | App origin for email confirmation links (e.g. `http://localhost:3000`) |
+| `DEV_TEST_USER_EMAIL` | No | For `pnpm seed:dev-user`: set with password to override; if both omitted, built-in local defaults |
+| `DEV_TEST_USER_PASSWORD` | No | For `pnpm seed:dev-user`: min 8 chars when set; must be set together with email to override defaults |
 
 3. Run `pnpm install`
 4. Set up Supabase with migrations in `supabase/migrations/`
    - `00001_initial.sql` (pgvector, tables, indexes, RLS, semantic search RPC)
    - `00002_storage_documents_bucket.sql` (private `documents` bucket + per-user storage policies)
+   - `00003_documents_chunks_rls_authenticated.sql` (RLS scoped to `authenticated` + explicit `WITH CHECK`)
 5. Run `pnpm dev`
 
-## Supabase Auth (required for API routes)
+## Supabase Auth (required)
 
-Upload, library, and chat call `/api/*` routes that require an authenticated Supabase user (`auth.getUser()`).
+The middleware and `/api/*` routes require a real Supabase session (`auth.getUser()`). Anonymous access is not used.
 
-1. In the [Supabase Dashboard](https://supabase.com/dashboard) → **Authentication** → **Providers** → **Anonymous**, enable **Anonymous sign-ins**.
-2. After a refresh, the app creates an anonymous session in the browser so cookies are sent to the API.
+1. In the [Supabase Dashboard](https://supabase.com/dashboard) → **Authentication** → **Providers** → **Email**, enable **Email** (password sign-in).
+2. Under **URL configuration**, set **Site URL** to your app origin (e.g. `http://localhost:3000` in dev).
+3. Add **Redirect URL** `http://localhost:3000/auth/callback` (and your production callback URL) so email confirmation and magic links work.
+4. Optional: set `NEXT_PUBLIC_SITE_URL` in `.env.local` to the same origin if signup builds redirect URLs server-side.
 
-If Anonymous is disabled, those endpoints return **401** until you add another sign-in flow (email, OAuth, etc.).
+Users sign up at `/signup` and sign in at `/login`. Unauthenticated visitors to `/library`, `/upload`, `/chat`, or API routes are redirected or receive **401**.
+
+If `/api/documents` returns **500** after login, open the response JSON (browser devtools → Network) for `details` / `code`. Typical causes: migrations not applied (`relation "documents" does not exist`), missing `documents` storage bucket (`00002`), or a stray newline in `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` (fixed by trimming in code—still verify the key).
+
+### Dev login user (optional)
+
+For a repeatable local account without using the signup UI:
+
+1. Ensure `.env.local` has `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+2. Run:
+
+```bash
+pnpm seed:dev-user
+```
+
+If `DEV_TEST_USER_EMAIL` and `DEV_TEST_USER_PASSWORD` are **both omitted**, the script uses local defaults (`dev@localhost.test` / `DevLocalOnly123!`) and prints a warning. To use your own credentials, set **both** variables (password at least 8 characters).
+
+This uses the **service role** to create a **confirmed** email/password user, or reset the password if that email already exists. Use only on non-production projects; never commit real passwords.
 
 ## Demo Seed Data
 

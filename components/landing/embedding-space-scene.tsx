@@ -5,16 +5,19 @@ import { Line } from "@react-three/drei";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 
+import { cn } from "@/lib/utils";
+
 function Constellation() {
   const groupRef = useRef<THREE.Group>(null);
   const points = useMemo(
     () =>
-      Array.from({ length: 36 }, () => [
-        (Math.random() - 0.5) * 6,
-        (Math.random() - 0.5) * 4,
-        (Math.random() - 0.5) * 5,
-      ] as [number, number, number]),
-    []
+      Array.from({ length: 36 }, () =>
+        [
+          (Math.random() - 0.5) * 6,
+          (Math.random() - 0.5) * 4,
+          (Math.random() - 0.5) * 5,
+        ] as [number, number, number]),
+    [],
   );
 
   const edges = useMemo(() => {
@@ -40,23 +43,43 @@ function Constellation() {
   return (
     <group ref={groupRef}>
       {edges.map((edge, idx) => (
-        <Line key={idx} points={edge} color="#ede5d3" lineWidth={0.5} transparent opacity={0.35} />
+        <Line
+          key={idx}
+          points={edge}
+          color="#dfe9f4"
+          lineWidth={0.85}
+          transparent
+          opacity={0.62}
+          depthWrite={false}
+        />
       ))}
       {points.map((point, idx) => (
         <mesh key={idx} position={point}>
-          <sphereGeometry args={[0.035, 10, 10]} />
-          <meshBasicMaterial color={idx % 7 === 0 ? "#c9a961" : "#ede5d3"} transparent opacity={idx % 7 === 0 ? 0.95 : 0.65} />
+          <sphereGeometry args={[0.045, 12, 12]} />
+          <meshBasicMaterial
+            color={idx % 7 === 0 ? "#6fa8d6" : "#dfe9f4"}
+            transparent
+            opacity={idx % 7 === 0 ? 1 : 0.88}
+            depthWrite={false}
+          />
         </mesh>
       ))}
     </group>
   );
 }
 
-export function EmbeddingSpaceScene() {
+export function EmbeddingSpaceScene({ className }: { className?: string }) {
   return (
-    <div className="h-[420px] w-full">
-      <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
-        <ambientLight intensity={0.6} />
+    <div className={cn("relative h-[420px] w-full", className)}>
+      <Canvas
+        className="block h-full w-full touch-none"
+        camera={{ position: [0, 0, 5.85], fov: 40 }}
+        gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
+        dpr={[1, 2]}
+      >
+        {/* Matches --color-bg-elevated so the canvas reads as a solid archive panel */}
+        <color attach="background" args={["#14110d"]} />
+        <ambientLight intensity={1.1} />
         <Constellation />
       </Canvas>
     </div>

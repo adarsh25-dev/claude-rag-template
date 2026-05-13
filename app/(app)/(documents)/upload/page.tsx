@@ -10,7 +10,6 @@ import { AuroraBackground } from "@/components/ui/primitives/aurora-background";
 import { MagneticButton } from "@/components/ui/primitives/magnetic-button";
 import { Button } from "@/components/ui/button";
 import { FileText, FileCode2, ScrollText, FileType2, X } from "lucide-react";
-import { ensureBrowserSession } from "@/lib/supabase/browser-session";
 
 type UploadStatus = {
   progress: number;
@@ -41,18 +40,6 @@ export default function UploadPage() {
     if (!files.length || status.uploading) return;
     setStatus({ progress: 10, message: "Uploading files…", uploading: true });
 
-    const session = await ensureBrowserSession();
-    if (!session.ok) {
-      setStatus({
-        progress: 0,
-        message: "Upload failed",
-        uploading: false,
-        error: session.message,
-      });
-      toast.error(session.message);
-      return;
-    }
-
     try {
       for (let index = 0; index < files.length; index++) {
         const file = files[index];
@@ -71,9 +58,7 @@ export default function UploadPage() {
         if (!response.ok) {
           const body = (await response.json().catch(() => null)) as { error?: string } | null;
           if (response.status === 401) {
-            throw new Error(
-              "Not signed in. In Supabase: Authentication → Providers → enable Anonymous, then refresh this page."
-            );
+            throw new Error("Your session expired. Sign in again from the home page.");
           }
           throw new Error(body?.error ?? "Upload failed");
         }
@@ -89,7 +74,7 @@ export default function UploadPage() {
       confetti({
         particleCount: 24,
         spread: 70,
-        colors: ["#c9a961", "#ede5d3", "#a89c84"],
+        colors: ["#6fa8d6", "#dfe9f4", "#8a9eb8"],
       });
       toast.success("Documents uploaded and processing started.");
       router.push("/library");
@@ -110,7 +95,7 @@ export default function UploadPage() {
   }, [status]);
 
   return (
-    <AuroraBackground className="min-h-screen">
+    <AuroraBackground className="min-h-[calc(100vh-3.5rem)]">
       <main className="relative z-10 mx-auto max-w-3xl px-6 py-20">
         <div className="mb-10 text-center">
           <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-[hsl(var(--color-border-strong))] bg-[hsl(var(--color-bg-overlay))/0.5] px-4 py-1 text-xs text-[hsl(var(--color-text-secondary))]">
@@ -186,7 +171,7 @@ export default function UploadPage() {
           {status.error ? (
             <div className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--color-danger)/0.5)] bg-[hsl(var(--color-danger)/0.12)] px-3 py-1 text-xs text-[hsl(var(--color-danger))] shadow-[0_0_16px_hsl(var(--color-danger)/0.25)]">
               {status.error}
-              <button className="underline" onClick={upload}>
+              <button type="button" className="underline" onClick={upload}>
                 Retry
               </button>
             </div>

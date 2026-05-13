@@ -2,7 +2,7 @@
 
 export function Spotlight({
   className,
-  color = "hsl(42 47% 59% / 0.18)",
+  color = "hsl(206 48% 58% / 0.18)",
   size = 600,
 }: {
   className?: string;

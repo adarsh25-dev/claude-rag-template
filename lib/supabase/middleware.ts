@@ -1,11 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
+import type { User } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
+export type UpdateSessionResult = {
+  response: NextResponse;
+  user: User | null;
+};
+
 /**
- * Refreshes the Supabase session from cookies so Route Handlers (e.g. /api/documents) see a valid user.
+ * Refreshes the Supabase session from cookies and returns the current user (validated with Auth server).
  * @see https://supabase.com/docs/guides/auth/server-side/nextjs
  */
-export async function updateSession(request: NextRequest) {
+export async function updateSession(request: NextRequest): Promise<UpdateSessionResult> {
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -31,7 +37,9 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  return supabaseResponse;
+  return { response: supabaseResponse, user };
 }

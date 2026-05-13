@@ -8,6 +8,8 @@ export function getLenis() {
       duration: 1.2,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       touchMultiplier: 2,
+      // Let nested overflow-y regions (chat transcript, drawers, sidebars) receive wheel/touch scroll
+      allowNestedScroll: true,
     });
 
     function raf(time: number) {

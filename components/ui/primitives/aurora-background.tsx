@@ -15,9 +15,9 @@ export function AuroraBackground({ children, className }: { children?: React.Rea
     let h = canvas.height = canvas.offsetHeight;
 
     const gradient = ctx.createRadialGradient(w * 0.5, h * 0.2, 0, w * 0.5, h * 0.2, w * 0.6);
-    gradient.addColorStop(0, "hsla(42, 47%, 59%, 0.08)");
-    gradient.addColorStop(0.5, "hsla(30, 14%, 4%, 0)");
-    gradient.addColorStop(1, "hsla(30, 14%, 4%, 0)");
+    gradient.addColorStop(0, "hsla(206, 48%, 58%, 0.09)");
+    gradient.addColorStop(0.5, "hsla(0, 0%, 4%, 0)");
+    gradient.addColorStop(1, "hsla(0, 0%, 4%, 0)");
 
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, w, h);

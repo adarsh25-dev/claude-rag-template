@@ -45,7 +45,7 @@ export default function LibraryPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[hsl(var(--color-bg))] px-6 py-12">
+    <main className="min-h-[calc(100vh-3.5rem)] px-6 py-12">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
@@ -61,6 +61,7 @@ export default function LibraryPage() {
           {FILTERS.map((pill) => (
             <button
               key={pill}
+              type="button"
               onClick={() => setFilter(pill)}
               className={`rounded-full border px-3 py-1 text-xs transition-all ${
                 filter === pill

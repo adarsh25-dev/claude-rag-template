@@ -37,7 +37,7 @@ export function MagneticButton({
 
   const variants = {
     default: "bg-[hsl(var(--color-bg-elevated))] text-[hsl(var(--color-text-primary))] border-[hsl(var(--color-border-strong))] hover:bg-[hsl(var(--color-bg-hover))]",
-    primary: "bg-gradient-to-r from-[hsl(var(--color-accent))] to-[hsl(42,47%,50%)] text-[hsl(var(--color-bg))] border-transparent shadow-[0_0_20px_hsl(var(--color-accent-glow))] hover:shadow-[0_0_35px_hsl(var(--color-accent-glow))]",
+    primary: "bg-gradient-to-r from-[hsl(var(--color-accent))] to-[hsl(206,48%,48%)] text-[hsl(var(--color-bg))] border-transparent shadow-[0_0_20px_hsl(var(--color-accent-glow))] hover:shadow-[0_0_35px_hsl(var(--color-accent-glow))]",
     secondary: "bg-transparent text-[hsl(var(--color-text-primary))] border-[hsl(var(--color-border-strong))] hover:bg-[hsl(var(--color-bg-hover))]",
     ghost: "bg-transparent border-transparent text-[hsl(var(--color-text-secondary))] hover:text-[hsl(var(--color-text-primary))]",
   };

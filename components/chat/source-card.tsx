@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Drawer } from "vaul";
 import { FileText } from "lucide-react";
 import { GlowCard } from "@/components/ui/primitives/glow-card";
+import { escapeRegExp } from "@/lib/escape-regexp";
 import { cn } from "@/lib/utils";
 
 export type SourceItem = {
@@ -16,6 +17,8 @@ export type SourceItem = {
   similarity: number;
   chunkIndex: number;
 };
+
+export type SourceCardVariant = "strip" | "rail";
 
 function similarityBadge(similarity: number) {
   const percentage = Math.round(similarity * 100);
@@ -37,33 +40,49 @@ function similarityBadge(similarity: number) {
   };
 }
 
-export function SourceCard({ source, queryTerms = [] }: { source: SourceItem; queryTerms?: string[] }) {
+export function SourceCard({
+  source,
+  queryTerms = [],
+  variant = "strip",
+}: {
+  source: SourceItem;
+  queryTerms?: string[];
+  variant?: SourceCardVariant;
+}) {
   const [open, setOpen] = useState(false);
   const badge = similarityBadge(source.similarity);
 
   const excerpt = queryTerms.reduce((acc, term) => {
     if (!term || term.length < 3) return acc;
-    return acc.replace(new RegExp(`(${term})`, "ig"), "<mark>$1</mark>");
+    const safe = escapeRegExp(term);
+    return acc.replace(new RegExp(`(${safe})`, "ig"), "<mark>$1</mark>");
   }, source.content);
+
+  const triggerClass =
+    variant === "rail"
+      ? "w-full max-w-none min-w-0 text-left"
+      : "w-[min(100%,280px)] min-w-0 shrink-0 text-left sm:w-[min(100%,300px)]";
 
   return (
     <Drawer.Root open={open} onOpenChange={setOpen} direction="right">
       <Drawer.Trigger asChild>
-        <button type="button" className="w-[300px] min-w-[300px] text-left">
+        <button type="button" className={triggerClass}>
           <GlowCard className="gradient-border rounded-xl p-4">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-xs text-[hsl(var(--color-text-secondary))]">
-                  <FileText className="size-3.5" />
+                  <FileText className="size-3.5 shrink-0" />
                   <span className="truncate">{source.documentTitle || source.filename || "Document"}</span>
                 </div>
               </div>
-              <span className={cn("rounded-full px-2 py-0.5 font-mono text-xs", badge.className)}>{badge.text}</span>
+              <span className={cn("shrink-0 rounded-full px-2 py-0.5 font-mono text-xs", badge.className)}>{badge.text}</span>
             </div>
 
             <p
               className="mt-3 line-clamp-3 text-sm text-[hsl(var(--color-text-secondary))]"
-              dangerouslySetInnerHTML={{ __html: excerpt.replace(/<mark>/g, '<mark class="bg-[hsl(var(--color-accent)/0.15)] rounded px-0.5">') }}
+              dangerouslySetInnerHTML={{
+                __html: excerpt.replace(/<mark>/g, '<mark class="bg-[hsl(var(--color-accent)/0.15)] rounded px-0.5">'),
+              }}
             />
 
             <div className="mt-3 flex items-center justify-between text-xs">
@@ -75,7 +94,7 @@ export function SourceCard({ source, queryTerms = [] }: { source: SourceItem; qu
       </Drawer.Trigger>
 
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-50 bg-black/50" />
+        <Drawer.Overlay className="fixed inset-0 z-50 bg-[hsl(var(--color-bg)/0.82)] backdrop-blur-[2px]" />
         <Drawer.Content className="fixed right-0 top-0 z-50 h-full w-full max-w-xl border-l border-[hsl(var(--color-border-strong))] bg-[hsl(var(--color-bg-overlay))] p-6">
           <h4 className="text-lg font-semibold text-[hsl(var(--color-text-primary))]">{source.documentTitle || source.filename || "Source"}</h4>
           <p className="mt-1 text-xs text-[hsl(var(--color-text-tertiary))]">Chunk #{source.chunkIndex}</p>

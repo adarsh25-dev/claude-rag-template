@@ -24,8 +24,11 @@ export function DocumentFilter({ documents, selectedIds, onToggle, onToggleAll, 
 
   return (
     <aside className="sticky top-6 h-fit space-y-3 rounded-2xl border border-[hsl(var(--color-border-strong))] bg-[hsl(var(--color-bg-overlay))/0.7] p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-[hsl(var(--color-text-primary))]">Filter by document</h3>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[hsl(var(--color-text-tertiary))]">Corpus</p>
+          <h3 className="font-display text-sm font-medium tracking-tight text-[hsl(var(--color-text-primary))]">Filter by document</h3>
+        </div>
         <span className="rounded-full border border-[hsl(var(--color-border-strong))] px-2 py-0.5 text-xs text-[hsl(var(--color-text-secondary))]">
           {documents.length}
         </span>
@@ -34,8 +37,9 @@ export function DocumentFilter({ documents, selectedIds, onToggle, onToggleAll, 
       <button
         type="button"
         onClick={onToggleAll}
+        aria-pressed={allActive}
         className={cn(
-          "flex w-full items-center justify-between rounded-lg border p-3 text-left transition-all",
+          "flex w-full items-center justify-between rounded-lg border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--color-accent)/0.45)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--color-bg))]",
           allActive
             ? "gradient-border border-[hsl(var(--color-accent)/0.6)] bg-[hsl(var(--color-accent)/0.08)]"
             : "border-[hsl(var(--color-border-strong))] hover:bg-[hsl(var(--color-bg-hover))]"
@@ -53,8 +57,9 @@ export function DocumentFilter({ documents, selectedIds, onToggle, onToggleAll, 
               key={document.id}
               type="button"
               onClick={() => onToggle(document.id)}
+              aria-pressed={active}
               className={cn(
-                "flex w-full items-center justify-between rounded-lg border p-3 text-left transition-all",
+                "flex w-full items-center justify-between rounded-lg border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--color-accent)/0.45)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--color-bg))]",
                 active
                   ? "gradient-border border-[hsl(var(--color-accent)/0.6)] bg-[hsl(var(--color-accent)/0.08)]"
                   : "border-[hsl(var(--color-border-strong))] hover:bg-[hsl(var(--color-bg-hover))]"

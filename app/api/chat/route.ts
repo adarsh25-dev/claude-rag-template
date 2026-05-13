@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       temperature: 0.2,
     });
 
-    const stream = result.toTextStreamResponse();
+    const stream = result.toDataStreamResponse();
     const headers = new Headers(stream.headers);
     headers.set(
       "x-rag-sources",
